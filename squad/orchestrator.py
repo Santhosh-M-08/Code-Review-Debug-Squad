@@ -120,7 +120,7 @@ class CodeReviewSquad:
         if intent in ("debug", "full_review"):
 
             log("Bug-Finder: reasoning step by step...")
-            log("Bug-Finder: sending request to Gemini...")
+            log(f"Bug-Finder: sending request to {self.llm.__class__.__name__}...")
 
             result.bugs = _as_dict(
                 self.bug_chain.invoke(
@@ -131,7 +131,7 @@ class CodeReviewSquad:
                     }
                 )
             )
-            log("Bug-Finder: Gemini response received.")
+            log("Bug-Finder: Response received.")
 
             log("Bug-Finder: completed.")
 

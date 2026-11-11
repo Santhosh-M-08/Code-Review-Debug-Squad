@@ -85,25 +85,26 @@ with st.sidebar:
 
     # Available providers
     provider_options = [
+        "ollama",
         "google",
         "anthropic",
-        "openai",
-        "ollama"
+        "openai"
     ]
 
-    # Safely select the configured provider
-    configured_provider = getattr(config, "LLM_PROVIDER", "ollama")
+    # Default to Ollama
+    configured_provider = getattr(
+        config,
+        "LLM_PROVIDER",
+        "ollama"
+    ).lower()
 
-    provider_index = (
-        provider_options.index(configured_provider)
-        if configured_provider in provider_options
-        else provider_options.index("ollama")
-    )
+    if configured_provider not in provider_options:
+        configured_provider = "ollama"
 
     provider = st.selectbox(
         "LLM provider",
         provider_options,
-        index=provider_index
+        index=provider_options.index(configured_provider)
     )
 
     # Safely retrieve the default model
