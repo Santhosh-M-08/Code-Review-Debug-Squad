@@ -1,4 +1,4 @@
-# Code Review & Debug Squad (Assignment 2)
+# Code Review & Debug Squad
 
 A multi-agent assistant that reviews a pasted Python snippet like a small engineering team: it finds bugs, checks style, rewrites the code, then writes unit tests and runs them in a sandbox to verify the fix.
 
