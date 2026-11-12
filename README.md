@@ -1,15 +1,192 @@
-# 🛠️ Code Review & Debug Squad
+# Code Review & Debug Squad
 
-An intelligent multi-agent Python code review assistant that works like a small software engineering team. It analyzes submitted code, identifies bugs, checks coding standards, generates corrected code, and creates and executes unit tests to verify the improvements.
+**An AI-powered multi-agent system for automated Python code review, debugging, code improvement, and test generation.**
 
-Built with **Python, Streamlit, LangChain, Ollama, and ChromaDB**, the application uses multiple specialized AI agents to provide a complete code review workflow using locally hosted language models.
+Code Review & Debug Squad is an intelligent code analysis application that simulates a collaborative software engineering team. Instead of relying on a single AI response, it uses specialized agents to inspect code, identify potential issues, suggest improvements, generate fixes, and validate them through automated testing.
 
-## Quick Start
+Built with **Python, Streamlit, LangChain, Ollama, and ChromaDB**, the application combines multi-agent orchestration, local language models, static analysis, and Retrieval-Augmented Generation (RAG) into a unified code review workflow.
+
+---
+
+## Overview
+
+Code Review & Debug Squad aims to make code reviews more systematic, explainable, and practical.
+
+A submitted code snippet passes through a series of specialized analysis and validation stages. Each agent has a specific responsibility, and their results are combined into a consolidated review.
+
+**Core capabilities:**
+
+- Automated bug detection and debugging.
+- Code quality and style analysis.
+- AI-generated code corrections.
+- Reflection-based review of proposed fixes.
+- Automated unit test generation.
+- Test execution in an isolated execution environment.
+- Intent-based agent routing.
+- Context-aware knowledge retrieval using RAG.
+- Local LLM inference through Ollama.
+
+## Architecture
+
+The application follows a modular multi-agent architecture coordinated by a central orchestrator.
+
+```mermaid
+flowchart TD
+    A["User Input: Python Code + Request"] --> B["Intent Detection"]
+    B --> C["Agent Orchestrator"]
+    C --> D["Retrieval Planner"]
+    D --> E{"Knowledge Required?"}
+    E -->|Yes| F["ChromaDB Knowledge Base"]
+    E -->|No| G["Agent Execution"]
+    F --> G
+    G --> H["Bug-Finder"]
+    G --> I["Style / Lint Agent"]
+    H --> J["Fixer Agent"]
+    I --> K["Review Results"]
+    J --> L["Critic / Reflection"]
+    L --> M["Test-Writer"]
+    M --> N["Sandbox Execution"]
+    N --> O["Final Review Report"]
+    K --> O
+    O --> P["Streamlit Dashboard"]
+```
+
+### Agent Responsibilities
+
+| Agent | Responsibility |
+|---|---|
+| **Bug-Finder** | Detects logical errors, runtime risks, and edge cases. |
+| **Style/Lint** | Evaluates readability, naming conventions, and coding standards. |
+| **Fixer** | Generates corrected and improved code. |
+| **Critic / Reflection** | Reviews proposed fixes and identifies potential shortcomings. |
+| **Test-Writer** | Generates unit tests to validate code behavior. |
+| **Explainer** | Explains code functionality and implementation logic. |
+| **Intent Router** | Identifies the user's objective and selects the appropriate workflow. |
+| **Retrieval Planner** | Determines whether external coding knowledge should be retrieved from the knowledge base. |
+
+## Intelligent Workflow
+
+The system uses intent detection to determine which workflow should execute.
+
+| Intent | Purpose |
+|---|---|
+| `debug` | Identify bugs and generate corrections. |
+| `style` | Review readability and coding conventions. |
+| `explain` | Explain the submitted code. |
+| `test` | Generate and execute unit tests. |
+| `full_review` | Perform a comprehensive code review. |
+
+The orchestrator coordinates the selected agents and combines their outputs into a unified result.
+
+## Agentic RAG
+
+The project integrates **Retrieval-Augmented Generation (RAG)** using ChromaDB to provide agents with relevant programming knowledge.
+
+Rather than retrieving documents for every request, a Retrieval Planner first determines whether additional context is necessary.
+
+When retrieval is required:
+
+1. The planner generates a relevant search query.
+2. ChromaDB searches the coding knowledge base.
+3. Relevant guidelines and examples are retrieved.
+4. Retrieved context is provided to the appropriate agents.
+5. Agents use the additional knowledge during analysis and generation.
+
+The knowledge base supports Markdown documents containing debugging examples, coding standards, and testing guidelines.
+
+## Technology Stack
+
+| Technology | Usage |
+|---|---|
+| Python | Application logic and backend |
+| Streamlit | Interactive web interface |
+| Ollama | Local LLM inference |
+| Qwen 2.5 Coder | Primary code-focused model |
+| Llama 3.2 | General-purpose model |
+| Gemma 3 | Lightweight model option |
+| LangChain | LLM integration and orchestration |
+| LCEL | Prompt and model chain composition |
+| ChromaDB | Vector storage and semantic retrieval |
+| Python AST | Static code analysis |
+| Pytest | Automated testing |
+
+## Application Features
+
+### 1. Multi-Agent Code Review
+Specialized agents independently analyze different aspects of submitted code.
+
+### 2. Automated Code Correction
+The Fixer generates an improved implementation based on identified issues.
+
+### 3. Reflection and Validation
+A Critic evaluates the proposed correction before the testing stage.
+
+### 4. Automated Test Generation
+The Test-Writer creates test cases to evaluate the implementation.
+
+### 5. Sandbox Execution
+Generated tests are executed with timeouts and execution restrictions to reduce risks from untrusted code.
+
+### 6. Interactive Dashboard
+The Streamlit interface provides five sections:
+
+- **Report:** Consolidated code review and identified issues.
+- **Fixed Code:** Corrected implementation and code differences.
+- **Tests:** Generated test cases and execution results.
+- **Agent Trace:** Execution steps, routing decisions, and retrieval activity.
+- **Prompts:** Agent prompt templates.
+
+### 7. Local Model Execution
+All language model inference is performed through locally hosted Ollama models. No cloud LLM API keys are required.
+
+---
+
+## Project Structure
+
+```text
+Code-Review-Debug-Squad/
+│
+├── app.py
+├── conftest.py
+├── requirements.txt
+├── README.md
+│
+├── squad/
+│   ├── config.py
+│   ├── llm.py
+│   ├── intent.py
+│   ├── knowledge.py
+│   ├── orchestrator.py
+│   ├── prompts.py
+│   ├── models.py
+│   ├── analysis.py
+│   ├── sandbox.py
+│   └── report.py
+│
+├── knowledge_base/
+│
+├── tests/
+│
+├── .chroma/
+│
+└── .vscode/
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10 or later.
+- [Ollama](https://ollama.com/) installed and running.
+- Git.
 
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/Santhosh-M-08/Code-Review-Debug-Squad.git
+
 cd Code-Review-Debug-Squad
 ```
 
@@ -21,27 +198,27 @@ python -m venv .venv
 
 Activate it:
 
+**Windows (PowerShell)**
+
 ```powershell
-# Windows
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 ```
 
+**Linux / macOS**
+
 ```bash
-# Linux / macOS
 source .venv/bin/activate
 ```
 
 ### 3. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### 4. Install and configure Ollama
+### 4. Download local language models
 
-Download and install Ollama from [https://ollama.com](https://ollama.com).
-
-Pull one of the supported local models:
+Pull the supported models using Ollama:
 
 ```bash
 ollama pull qwen2.5-coder:3b
@@ -49,233 +226,89 @@ ollama pull llama3.2:3b
 ollama pull gemma3:1b
 ```
 
-Make sure Ollama is running before starting the application.
+Verify the installed models:
 
-### 5. Launch the application
+```bash
+ollama list
+```
+
+### 5. Start the application
 
 ```bash
 python -m streamlit run app.py
 ```
 
-The application opens in your browser. Select a local model, enter your Python code, describe what you need, and click **Run Review**.
+Open the local URL displayed in the terminal to access the application.
 
-**No cloud API keys are required.** All LLM inference is performed locally through Ollama.
-
-### 6. Run the tests
+### 6. Run the test suite
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
-
-Tests can be run independently of the LLM if they do not require model access.
 
 ---
 
-## Architecture
+## Example Usage
 
-The project follows a multi-agent architecture in which specialized agents collaborate to analyze and improve Python code.
+Submit a Python function such as:
+
+```python
+def find_max(numbers):
+    maximum = numbers[0]
+
+    for number in numbers:
+        if number > maximum:
+            maximum = number
+
+    return maximum
+```
+
+Example request:
 
 ```text
-                  Python Code + User Request
-                            |
-                            v
-                  +---------------------+
-                  |   Intent Detection  |
-                  |  Debug / Style /    |
-                  | Explain / Test /    |
-                  |    Full Review     |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |   Static Analysis   |
-                  |    Python AST       |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |  Retrieval Planner  |
-                  |    RETRIEVE / SKIP  |
-                  +----------+----------+
-                             |
-                     +-------+-------+
-                     |               |
-                  RETRIEVE          SKIP
-                     |               |
-                     v               |
-              +--------------+       |
-              |   ChromaDB   |       |
-              | Coding Docs  |       |
-              +------+-------+       |
-                     |               |
-                     +-------+-------+
-                             |
-                             v
-                  +---------------------+
-                  |     Bug-Finder      |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |     Style / Lint    |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |       Fixer         |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |  Critic / Reflection|
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |    Test-Writer      |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  |  Sandbox Execution  |
-                  |   ReAct Repair Loop |
-                  +----------+----------+
-                             |
-                             v
-                  +---------------------+
-                  | Consolidated Report |
-                  |   Streamlit GUI     |
-                  +---------------------+
+Review this code for bugs, edge cases, and possible improvements.
 ```
 
-## Technology Stack
+The application can:
 
-| Technology | Purpose |
-|---|---|
-| Python | Core application and backend logic |
-| Streamlit | Interactive frontend |
-| Ollama | Runs local language models |
-| Qwen 2.5 Coder / Llama 3.2 / Gemma 3 | Local LLM options |
-| LangChain | Agent orchestration and prompt management |
-| LCEL | Connects prompts, models, and output parsers |
-| ChromaDB | Vector database for coding knowledge |
-| Python AST | Static code analysis |
-| Pytest | Unit testing |
-| Isolated Sandbox | Executes generated tests with safety limits |
-
-## AI Agents and Responsibilities
-
-| Agent | Responsibility |
-|---|---|
-| Bug-Finder | Identifies logical errors, runtime issues, and edge cases |
-| Style/Lint | Checks naming conventions, readability, and coding practices |
-| Fixer | Generates corrected and improved Python code |
-| Critic / Reflection | Evaluates the Fixer's proposed solution |
-| Test-Writer | Generates unit tests and verifies the implementation |
-| Explainer | Explains code functionality and logic |
-| Intent Router | Determines the user's request and selects the appropriate workflow |
-| Retrieval Planner | Decides whether external coding knowledge should be retrieved from the knowledge base |
-
-## Intent Detection and Agent Routing
-
-The application supports five types of user intent:
-
-| Intent | Agents Executed |
-|---|---|
-| `debug` | Bug-Finder, Fixer, Critic, Test-Writer |
-| `style` | Style/Lint |
-| `explain` | Explainer |
-| `test` | Test-Writer |
-| `full_review` | All applicable agents |
-
-Users can either allow automatic intent detection or manually select an intent from the sidebar.
-
-## Key Features
-
-### 1. Multi-Agent Code Review
-Multiple specialized agents analyze different aspects of the submitted code and contribute to a consolidated review.
-
-### 2. Local LLM Integration
-Uses Ollama to run language models locally without depending on external LLM APIs.
-
-Supported models:
-
-- **Qwen 2.5 Coder 3B** – Specialized for programming and code-related tasks.
-- **Llama 3.2 3B** – General-purpose language model.
-- **Gemma 3 1B** – Lightweight model option.
-
-### 3. Agentic RAG
-Uses a Retrieval-Augmented Generation approach with ChromaDB.
-
-The Retrieval Planner decides whether coding guidelines, debugging examples, or testing documentation are needed. Relevant knowledge is retrieved through similarity search and passed to the appropriate agents.
-
-### 4. Code Correction and Reflection
-The Fixer generates improved code, while the Critic evaluates the proposed changes to improve reliability.
-
-### 5. Automated Test Generation
-The Test-Writer generates unit tests to validate the submitted or corrected implementation.
-
-### 6. ReAct-Based Sandbox Testing
-Generated tests are executed in an isolated process with execution timeouts and resource restrictions. Failed test runs can trigger diagnosis and repair attempts.
-
-### 7. Interactive Streamlit Interface
-The frontend provides:
-
-- Python code editor/input area.
-- User request and intent selection.
-- Local model selection.
-- Consolidated review report.
-- Corrected code with downloadable output.
-- Original-versus-fixed code diff.
-- Generated tests and execution logs.
-- Agent execution trace and RAG information.
-- Agent prompt templates.
-
-## How the Acceptance Criteria Are Met
-
-| # | Acceptance Criterion | Implementation |
-|---|---|---|
-| 1 | LLM Integration | `squad/llm.py` – Ollama integration |
-| 2 | Interactive GUI | `app.py` – Streamlit frontend |
-| 3 | Prompt Engineering | `squad/prompts.py` – Few-shot, CoT, zero-shot, reflection, and ReAct prompting |
-| 4 | LangChain Core | `ChatPromptTemplate`, LCEL chains, and output parsers |
-| 5 | Agentic RAG | Retrieval Planner, ChromaDB, and category-filtered retrieval |
-| 6 | Intent Detection and Routing | `squad/intent.py` and `squad/orchestrator.py` |
-| 7 | Vector Database | `squad/knowledge.py` – Persistent ChromaDB collection |
-
-## Demo Workflow
-
-1. Launch the application and load the pre-filled sample Python code.
-2. Enter `review my code` and select automatic intent detection.
-3. Run the review and demonstrate how the agents identify bugs and style issues.
-4. Open **Agent Trace** to demonstrate intent routing and the RAG retrieval decision.
-5. Open **Fixed Code** to show the corrected implementation and code differences.
-6. Open **Tests** to demonstrate generated test cases and sandbox execution.
-7. Enter `explain this` to demonstrate the Explainer agent.
-8. Enter `write tests` to demonstrate automated test generation and execution.
-
-## Extending the Knowledge Base
-
-The knowledge base can be expanded by adding Markdown files inside the `knowledge_base/` directory.
-
-Use the following naming conventions:
-
-- `bugs_*.md` – Debugging guidelines and common programming errors.
-- `style_*.md` – Python coding standards and style guidelines.
-- `testing_*.md` – Unit testing techniques and testing practices.
-
-Organize content using Markdown headings (`##`). Each section is treated as a separate knowledge chunk.
-
-After adding new documents, click **Re-index knowledge base** in the application sidebar to update ChromaDB.
-
-## Project Limitations
-
-- Currently supports Python code review and testing.
-- Review quality depends on the selected local language model.
-- Smaller models may occasionally generate malformed structured responses or inaccurate suggestions.
-- First-time ChromaDB initialization may download an embedding model, requiring an internet connection.
-- The sandbox provides process isolation, timeouts, and resource restrictions but is not a complete security boundary. Production deployments should use stronger isolation, such as network-disabled containers.
+1. Detect potential edge-case failures, such as empty input.
+2. Evaluate code readability and style.
+3. Generate a corrected implementation.
+4. Create unit tests for normal and edge-case inputs.
+5. Execute tests and report the results.
 
 ---
 
-**Code Review & Debug Squad** demonstrates how multi-agent systems, prompt engineering, local language models, Agentic RAG, and automated testing can work together to build an intelligent software development assistant.
+## Design Principles
+
+- **Modularity:** Each agent has a clearly defined responsibility.
+- **Separation of Concerns:** UI, orchestration, prompts, retrieval, and execution are maintained separately.
+- **Context Awareness:** Relevant coding knowledge is retrieved when necessary.
+- **Validation:** Generated corrections are evaluated through automated testing.
+- **Local-First:** Language models run locally through Ollama.
+- **Transparency:** Agent traces help users understand the review workflow.
+
+## Limitations
+
+- The current implementation focuses on Python code.
+- Results depend on the capabilities of the selected local language model.
+- AI-generated fixes and tests may require human verification.
+- Initial ChromaDB setup may require downloading an embedding model.
+- The sandbox has execution restrictions but should not be considered a fully secure environment for arbitrary untrusted code.
+
+## Future Improvements
+
+- Support for additional programming languages.
+- More advanced static analysis.
+- Improved test coverage and automated repair.
+- Stronger sandbox isolation.
+- Additional local language models.
+- Integration with GitHub pull requests and repository-level reviews.
+
+---
+
+## Project Goal
+
+The goal of Code Review & Debug Squad is to demonstrate how multi-agent AI systems, local language models, prompt engineering, Retrieval-Augmented Generation, and automated testing can work together to create a practical software engineering assistant.
+
+**Built with Python and local AI. Designed for smarter code reviews.**
