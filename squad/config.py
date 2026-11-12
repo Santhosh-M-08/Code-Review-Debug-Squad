@@ -12,19 +12,19 @@ CHROMA_DIR = BASE_DIR / ".chroma"
 COLLECTION_NAME = "coding_guidelines"
 
 
-# LLM Configuration
-# Supported providers: google, anthropic, openai, ollama
+# Local LLM Configuration (Ollama)
 
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+LLM_PROVIDER = "ollama"
 
 LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder:3b")
 
 DEFAULT_MODELS = {
-    "google": "gemini-3.8-flash",
-    "anthropic": "claude-sonnet-5-5",
-    "openai": "gpt-4o-mini",
-    "ollama": "qwen2.5-coder:3b",
+    "qwen2.5-coder:3b": "qwen2.5-coder:3b",
+    "llama3.2:3b": "llama3.2:3b",
+    "gemma3:1b": "gemma3:1b",
 }
+
+AVAILABLE_MODELS = list(DEFAULT_MODELS.keys())
 
 
 # Sandbox Configuration

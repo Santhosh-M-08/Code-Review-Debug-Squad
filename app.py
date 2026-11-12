@@ -1,9 +1,9 @@
+
 """Streamlit front end for the Code Review & Debug Squad.
 Run: py -m streamlit run app.py
 """
 
 import difflib
-import os
 
 import streamlit as st
 
@@ -16,12 +16,20 @@ from squad.prompts import ALL_PROMPTS
 from squad.report import render_report
 
 
+# ------------------------------------------------------------------
+# Page Configuration
+# ------------------------------------------------------------------
+
 st.set_page_config(
     page_title="Code Review & Debug Squad",
     page_icon="🛠️",
     layout="wide"
 )
 
+
+# ------------------------------------------------------------------
+# Sample Python Code
+# ------------------------------------------------------------------
 
 SAMPLE_CODE = '''import os
 
@@ -47,14 +55,20 @@ def find_max(values):
 '''
 
 
-# Default models for each provider
-FALLBACK_MODELS = {
-    "google": "gemini-3.8-flash",
-    "anthropic": "claude-3-5-sonnet-latest",
-    "openai": "gpt-4o-mini",
-    "ollama": ""
+# ------------------------------------------------------------------
+# Available Local Models
+# ------------------------------------------------------------------
+
+AVAILABLE_MODELS = {
+    "Qwen 2.5 Coder 3B": "qwen2.5-coder:3b",
+    "Llama 3.2 3B": "llama3.2:3b",
+    "Gemma 3 1B": "gemma3:1b",
 }
 
+
+# ------------------------------------------------------------------
+# Cached Resources
+# ------------------------------------------------------------------
 
 @st.cache_resource(
     show_spinner="Loading knowledge base (first run downloads the embedding model)..."
@@ -64,13 +78,11 @@ def load_kb() -> KnowledgeBase:
 
 
 @st.cache_resource(show_spinner=False)
-def load_squad(
-    provider: str,
-    model: str,
-    key_fingerprint: str
-) -> CodeReviewSquad:
+def load_squad(model: str) -> CodeReviewSquad:
+    """Load a review squad using the selected local Ollama model."""
+
     return CodeReviewSquad(
-        get_llm(provider, model or None),
+        get_llm("ollama", model),
         load_kb()
     )
 
@@ -83,66 +95,38 @@ with st.sidebar:
 
     st.header("Settings")
 
-    # Available providers
-    provider_options = [
-        "ollama",
-        "google",
-        "anthropic",
-        "openai"
-    ]
+    # Local LLM configuration
+    st.subheader("🤖 Local LLM")
 
-    # Default to Ollama
-    configured_provider = getattr(
-        config,
-        "LLM_PROVIDER",
-        "ollama"
-    ).lower()
+    # Model selection
+    model_names = list(AVAILABLE_MODELS.keys())
 
-    if configured_provider not in provider_options:
-        configured_provider = "ollama"
+    configured_model = config.LLM_MODEL
 
-    provider = st.selectbox(
-        "LLM provider",
-        provider_options,
-        index=provider_options.index(configured_provider)
+    selected_model_name = next(
+        (
+            name
+            for name, model_id in AVAILABLE_MODELS.items()
+            if model_id == configured_model
+        ),
+        "Qwen 2.5 Coder 3B"
     )
 
-    # Safely retrieve the default model
-    configured_models = getattr(config, "DEFAULT_MODELS", {})
-
-    default_model = (
-        configured_models.get(provider)
-        or FALLBACK_MODELS[provider]
+    selected_model_name = st.selectbox(
+        "Select Model",
+        model_names,
+        index=model_names.index(selected_model_name)
     )
 
-    configured_model = getattr(config, "LLM_MODEL", "")
+    model = AVAILABLE_MODELS[selected_model_name]
 
-    model = st.text_input(
-        "Model",
-        value=configured_model or default_model
-    )
+    st.caption(f"Model: `{model}`")
 
-    # API key configuration
-    key_var = {
-        "google": "GOOGLE_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY",
-        "openai": "OPENAI_API_KEY"
-    }.get(provider)
-
-    api_key = ""
-
-    if key_var:
-        api_key = st.text_input(
-            key_var,
-            type="password",
-            value="",
-            help="Leave empty if it is already set in your environment."
-        )
-
-        if api_key:
-            os.environ[key_var] = api_key.strip()
+    st.divider()
 
     # Intent selection
+    st.subheader("Review Settings")
+
     intent_choice = st.selectbox(
         "Intent",
         ["auto (let the router decide)"] + list(INTENTS)
@@ -151,23 +135,32 @@ with st.sidebar:
     st.divider()
 
     # Knowledge base
+    st.subheader("📚 Knowledge Base")
+
     try:
+
         kb = load_kb()
 
         st.caption(
             f"Vector DB: ChromaDB, {kb.count()} guideline chunks"
         )
 
-        if st.button("Re-index knowledge base"):
+        if st.button(
+            "Re-index knowledge base",
+            use_container_width=True
+        ):
+
             n = kb.ingest()
+
             st.success(f"Indexed {n} chunks")
 
     except Exception as exc:
+
         st.error(f"Knowledge base unavailable: {exc}")
 
 
 # ------------------------------------------------------------------
-# Main application
+# Main Application
 # ------------------------------------------------------------------
 
 st.title("🛠️ Code Review & Debug Squad")
@@ -177,6 +170,12 @@ st.caption(
     "review your Python code like a small engineering team."
 )
 
+st.caption(
+    f"Running locally with **{selected_model_name}** through Ollama."
+)
+
+
+# User request
 request = st.text_input(
     "What do you need?",
     placeholder=(
@@ -185,12 +184,16 @@ request = st.text_input(
     )
 )
 
+
+# Python code input
 code = st.text_area(
     "Python code",
     value=SAMPLE_CODE,
     height=340
 )
 
+
+# Run button
 run_clicked = st.button(
     "Run review",
     type="primary",
@@ -199,18 +202,18 @@ run_clicked = st.button(
 
 
 # ------------------------------------------------------------------
-# Run code review
+# Run Code Review
 # ------------------------------------------------------------------
 
 if run_clicked:
 
     try:
 
-        squad = load_squad(
-            provider,
-            model,
-            str(hash(api_key))
-        )
+        with st.spinner(
+            f"Loading {selected_model_name}..."
+        ):
+
+            squad = load_squad(model)
 
         override = (
             None
@@ -229,7 +232,9 @@ if run_clicked:
                 code,
                 request,
                 intent_override=override,
-                progress=lambda message: st.write(f"🔄 {message}")
+                progress=lambda message: st.write(
+                    f"🔄 {message}"
+                )
             )
 
             st.success("✅ Review completed!")
@@ -241,18 +246,30 @@ if run_clicked:
 
         st.session_state["result"] = result
 
+        st.session_state["result_model"] = selected_model_name
+
     except Exception as exc:
+
         st.error(f"Review failed: {exc}")
 
 
 # ------------------------------------------------------------------
-# Display results
+# Display Results
 # ------------------------------------------------------------------
 
 result = st.session_state.get("result")
 
 
 if result:
+
+    result_model = st.session_state.get(
+        "result_model",
+        "Unknown model"
+    )
+
+    st.caption(
+        f"Review generated using: **{result_model}**"
+    )
 
     tabs = st.tabs([
         "📋 Report",
@@ -262,9 +279,11 @@ if result:
         "📝 Prompts"
     ])
 
+
     # --------------------------------------------------
     # REPORT TAB
     # --------------------------------------------------
+
     with tabs[0]:
 
         st.markdown(
@@ -274,7 +293,9 @@ if result:
 
         if result.static_findings:
 
-            with st.expander("Static-analysis tool findings"):
+            with st.expander(
+                "Static-analysis tool findings"
+            ):
 
                 for f in result.static_findings:
 
@@ -283,9 +304,11 @@ if result:
                         f"**{f.kind}** - {f.message}"
                     )
 
+
     # --------------------------------------------------
     # FIXED CODE TAB
     # --------------------------------------------------
+
     with tabs[1]:
 
         if result.fixed_code is None:
@@ -314,12 +337,16 @@ if result:
             col1, col2 = st.columns(2)
 
             with col1:
+
                 st.metric(
                     "Original lines",
-                    len((result.original_code or "").splitlines())
+                    len(
+                        (result.original_code or "").splitlines()
+                    )
                 )
 
             with col2:
+
                 st.metric(
                     "Fixed code lines",
                     len(result.fixed_code.splitlines())
@@ -327,7 +354,7 @@ if result:
 
             st.divider()
 
-            # Display corrected code
+            # Corrected code
             st.markdown("### Corrected Python Code")
 
             st.code(
@@ -347,7 +374,7 @@ if result:
 
             st.divider()
 
-            # Compare original and corrected code
+            # Code comparison
             st.markdown("### 🔍 Code Changes")
 
             diff = "\n".join(
@@ -379,9 +406,11 @@ if result:
                     "No changes were made to the original code."
                 )
 
+
     # --------------------------------------------------
     # TESTS TAB
     # --------------------------------------------------
+
     with tabs[2]:
 
         if result.test_run is None:
@@ -394,7 +423,9 @@ if result:
 
             t = result.test_run
 
-            (st.success if t["ok"] else st.error)(
+            (
+                st.success if t["ok"] else st.error
+            )(
                 f"{'All tests passed' if t['ok'] else 'Tests failed'}: "
                 f"{t['tests_run']} run, "
                 f"{t['failures']} failures, "
@@ -438,22 +469,31 @@ if result:
                             f"{entry['thought']}"
                         )
 
+
     # --------------------------------------------------
     # AGENT TRACE TAB
     # --------------------------------------------------
+
     with tabs[3]:
 
         st.subheader("🤖 Agent Execution Trace")
 
         if result.trace:
 
-            for index, step in enumerate(result.trace, start=1):
+            for index, step in enumerate(
+                result.trace,
+                start=1
+            ):
 
-                st.write(f"**Step {index}.** {step}")
+                st.write(
+                    f"**Step {index}.** {step}"
+                )
 
         else:
 
-            st.info("No agent execution steps recorded.")
+            st.info(
+                "No agent execution steps recorded."
+            )
 
         st.divider()
 
@@ -465,7 +505,9 @@ if result:
 
         else:
 
-            st.info("No retrieval information available.")
+            st.info(
+                "No retrieval information available."
+            )
 
         if result.retrieved:
 
@@ -480,9 +522,11 @@ if result:
 
                     st.text(hit["text"])
 
+
     # --------------------------------------------------
     # PROMPTS TAB
     # --------------------------------------------------
+
     with tabs[4]:
 
         st.subheader("📝 Agent Prompt Templates")
@@ -503,7 +547,9 @@ if result:
                         else "USER"
                     )
 
-                    st.markdown(f"**{role} Prompt**")
+                    st.markdown(
+                        f"**{role} Prompt**"
+                    )
 
                     st.code(
                         message.prompt.template,
