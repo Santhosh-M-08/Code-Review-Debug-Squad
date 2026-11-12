@@ -127,7 +127,7 @@ class CodeReviewSquad:
                     {
                         "code": code,
                         "tool_findings": tool_text,
-                        "guidelines": self._context(result, "bugs")
+                        "guidelines": self._context(result, "bugs", log)
                     }
                 )
             )
@@ -146,7 +146,7 @@ class CodeReviewSquad:
                     {
                         "code": code,
                         "tool_findings": tool_text,
-                        "guidelines": self._context(result, "style")
+                        "guidelines": self._context(result, "style", log)
                     }
                 )
             )
@@ -169,7 +169,7 @@ class CodeReviewSquad:
                 {
                     "code": code,
                     "request": request or "(no specific request)",
-                    "guidelines": self._context(result, None)
+                    "guidelines": self._context(result, None, log)
                 }
             )
 
@@ -215,19 +215,74 @@ class CodeReviewSquad:
     # ---------------------------------------------------------
     # Agentic RAG
     # ---------------------------------------------------------
-
+        
     def _decide_retrieval(self, result: ReviewResult, log) -> None:
-        result.retrieval = {
-            "retrieve": False,
-            "query": "",
-            "reason": "temporarily disabled for debugging"
-        }
-        log("Retrieval planner: skipped (debugging)")
+        """Let the LLM decide whether coding guidance should be retrieved."""
 
+        # Skip retrieval if the knowledge base is unavailable.
+        if self.kb is None:
+            result.retrieval = {
+                "retrieve": False,
+                "query": "",
+                "reason": "Knowledge base is unavailable."
+            }
+            log("Retrieval planner: skipped (no knowledge base).")
+            return
+
+        log("Retrieval planner: asking Ollama whether guidance is needed...")
+
+        try:
+            decision = self.retrieval_chain.invoke(
+                {
+                    "intent": result.intent,
+                    "request": result.request or "(no specific request)",
+                    "code": result.original_code
+                }
+            )
+
+            if not isinstance(decision, dict):
+                raise ValueError("Invalid retrieval response.")
+
+            retrieve = decision.get("retrieve") is True
+            query = str(decision.get("query", "")).strip()
+            reason = str(decision.get("reason", "")).strip()
+
+            # A retrieval decision requires a valid search query.
+            if retrieve and not query:
+                retrieve = False
+                reason = "No valid search query was generated."
+
+            result.retrieval = {
+                "retrieve": retrieve,
+                "query": query if retrieve else "",
+                "reason": reason or "No reason provided."
+            }
+
+            if retrieve:
+                log(f"Retrieval planner: RETRIEVE - {reason}")
+                log(f"Retrieval planner: search query = {query}")
+            else:
+                log(f"Retrieval planner: SKIP - {reason}")
+
+        except Exception as exc:
+            result.retrieval = {
+                "retrieve": False,
+                "query": "",
+                "reason": f"Retrieval planning failed: {type(exc).__name__}"
+            }
+
+            log(
+                "Retrieval planner: failed; continuing without retrieval. "
+                f"Error: {type(exc).__name__}"
+            )
+
+
+    
     def _context(
         self,
         result: ReviewResult,
-        category: Optional[str]
+        category: Optional[str],
+        log=None
     ) -> str:
 
         if (
@@ -236,28 +291,40 @@ class CodeReviewSquad:
         ):
             return "(retrieval skipped)"
 
-        log_message = (
-            f"Knowledge base: searching {category or 'general'} guidelines..."
-        )
+        if log:
+            log(
+                f"Knowledge base: searching "
+                f"{category or 'general'} guidelines..."
+            )
 
-        # Search the local knowledge base
+        # Search ChromaDB
         hits = self.kb.search(
             result.retrieval["query"],
             k=config.RETRIEVAL_TOP_K,
             category=category
         )
 
+        # Avoid duplicate retrieved documents
         known = {
             h["id"]
             for h in result.retrieved
         }
 
-        result.retrieved.extend(
+        new_hits = [
             h for h in hits
             if h["id"] not in known
-        )
+        ]
+
+        result.retrieved.extend(new_hits)
+
+        if log:
+            log(
+                f"Knowledge base: found {len(hits)} "
+                f"relevant {category or 'general'} chunk(s)."
+            )
 
         return format_context(hits)
+
 
     # ---------------------------------------------------------
     # Fixer with reflection
@@ -360,7 +427,7 @@ class CodeReviewSquad:
             self.test_chain.invoke(
                 {
                     "code": target_code,
-                    "guidelines": self._context(result, "testing")
+                    "guidelines": self._context(result, "testing", log)
                 }
             )
         )
